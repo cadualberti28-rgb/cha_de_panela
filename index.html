@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casa Nova Carlos e Gabi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .modal-overlay { background-color: rgba(28, 25, 23, 0.85); backdrop-filter: blur(8px); }
+        .presente-card { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .presente-card:hover { transform: translateY(-8px); }
+    </style>
+</head>
+<body class="bg-[#faf7f2] text-stone-800 pb-32">
+
+    <div id="root">
+        <div class="min-h-screen flex items-center justify-center">
+            <div class="flex flex-col items-center gap-4">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-rose-500"></div>
+                <p class="text-stone-400 animate-pulse">A preparar o vosso site...</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0';
+        import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { 
+            Heart, Gift, Copy, CheckCircle2, QrCode, X, Landmark, User, Loader2, AlertCircle
+        } from 'https://esm.sh/lucide-react@0.263.0';
+
+        // ========================================================
+        // CONFIGURAÇÃO OFICIAL DO CARLOS
+        // ========================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAbGiEArsEz2EnzTxt-8vngYtWtr6qYyU",
+            authDomain: "cha-de-panela-f4d73.firebaseapp.com",
+            projectId: "cha-de-panela-f4d73",
+            storageBucket: "cha-de-panela-f4d73.firebasestorage.app",
+            messagingSenderId: "798143128950",
+            appId: "1:798143128950:web:c6a615da5aa7716fffc657",
+            measurementId: "G-XLVHKRJRVE"
+        };
+
+        const appId = 'cha-carlos-gabi-v3';
+        const PIX_KEY = "07607079955"; 
+        const PIX_NAME = "CARLOS EDUARDO SOTOMAIOR ALBERTI";
+        const PIX_SHORT_NAME = "Carlos";
+        const PIX_CITY = "SAO PAULO";
+        const PIX_BANK = "BANCO SANTANDER (BRASIL) S.A.";
+
+        let db, auth;
+        try {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Erro na inicialização do Firebase:", e);
+        }
+
+        function App() {
+            const [items, setItems] = useState([]);
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [copied, setCopied] = useState(false);
+
+            const generatePixPayload = (amount) => {
+                const formattedAmount = amount.toFixed(2);
+                const f = (id, val) => {
+                    const len = val.length.toString().padStart(2, '0');
+                    return `${id}${len}${val}`;
+                };
+                const gui = "0014BR.GOV.BCB.PIX";
+                const key = f("01", PIX_KEY);
+                const merchantAccount = f("26", gui + key);
+                let payload = "000201" + merchantAccount + "520400005303986" + f("54", formattedAmount) + "5802BR" + f("59", PIX_SHORT_NAME.toUpperCase()) + f("60", PIX_CITY.toUpperCase()) + "62070503***6304";
+                
+                let crc = 0xFFFF;
+                for (let i = 0; i < payload.length; i++) {
+                    crc ^= payload.charCodeAt(i) << 8;
+                    for (let j = 0; j < 8; j++) {
+                        if ((crc & 0x8000) !== 0) crc = (crc << 1) ^ 0x1021;
+                        else crc <<= 1;
+                    }
+                }
+                crc = (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+                return payload + crc;
+            };
+
+            useEffect(() => {
+                if (!auth) return;
+                
+                const initAuth = async () => {
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (err) {
+                        console.error("Erro Auth:", err.code);
+                        if (err.code === 'auth/configuration-not-found') {
+                            setError("O Login Anónimo precisa de ser ativado no Consola do Firebase (Authentication > Sign-in method).");
+                        } else {
+                            setError("Erro ao ligar ao servidor. Por favor, tente mais tarde.");
+                        }
+                        setLoading(false);
+                    }
+                };
+
+                initAuth();
+                const unsubscribeAuth = onAuthStateChanged(auth, (u) => setUser(u));
+                return () => unsubscribeAuth();
+            }, []);
+
+            useEffect(() => {
+                if (!user || !db) return;
+                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'presentes');
+                const unsub = onSnapshot(colRef, (snap) => {
+                    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setItems(data);
+                    setLoading(false);
+                }, (err) => {
+                    console.error("Erro Firestore:", err);
+                    setError("Erro ao carregar a lista de presentes.");
+                    setLoading(false);
+                });
+                return () => unsub();
+            }, [user]);
+
+            const copyPix = (item) => {
+                const payload = generatePixPayload(item.price);
+                const textArea = document.createElement("textarea");
+                textArea.value = payload;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                } catch (err) {
+                    console.error('Erro ao copiar', err);
+                }
+                document.body.removeChild(textArea);
+            };
+
+            if (error) {
+                return React.createElement('div', { className: "min-h-screen flex items-center justify-center bg-[#faf7f2] p-6 text-center" }, 
+                    React.createElement('div', { className: "bg-white p-8 rounded-[2.5rem] shadow-xl max-w-sm border border-rose-100" }, [
+                        React.createElement(AlertCircle, { className: "text-rose-500 mx-auto mb-4", size: 48 }),
+                        React.createElement('h2', { className: "text-xl font-bold mb-2 text-stone-800" }, "Quase lá!"),
+                        React.createElement('p', { className: "text-stone-500 text-sm leading-relaxed" }, error)
+                    ])
+                );
+            }
+
+            if (loading) {
+                return React.createElement('div', { className: "min-h-screen flex items-center justify-center bg-[#faf7f2]" }, 
+                    React.createElement(Loader2, { className: "animate-spin text-rose-500 w-12 h-12" })
+                );
+            }
+
+            return React.createElement('div', { className: "min-h-screen" }, [
+                // Header
+                React.createElement('header', { key: 'header', className: "bg-white pt-24 pb-20 px-4 text-center shadow-sm relative overflow-hidden" }, [
+                    React.createElement('div', { key: 'gradient', className: "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-200 via-rose-400 to-rose-200" }),
+                    React.createElement(Heart, { key: 'icon', className: "w-14 h-14 text-rose-400 mx-auto mb-6 fill-rose-50" }),
+                    React.createElement('h1', { key: 'title', className: "text-5xl md:text-7xl font-serif mb-4 tracking-tight text-stone-800" }, "Casa Nova Carlos e Gabi"),
+                    React.createElement('p', { key: 'text', className: "text-stone-400 italic text-lg max-w-lg mx-auto leading-relaxed" }, "“O melhor presente é a vossa presença, mas se quiserem ajudar com a nossa casa nova...”")
+                ]),
+
+                // Grid de Presentes
+                React.createElement('main', { key: 'main', className: "max-w-7xl mx-auto px-6 py-16" }, 
+                    items.length === 0 
+                    ? React.createElement('div', { className: "text-center py-24 bg-white rounded-[3rem] shadow-sm border border-stone-100" }, [
+                        React.createElement(Gift, { className: "mx-auto text-stone-200 mb-6", size: 64 }),
+                        React.createElement('h2', { className: "text-2xl font-serif text-stone-600 mb-2" }, "A lista está quase pronta"),
+                        React.createElement('p', { className: "text-stone-400" }, "Estamos a organizar os últimos detalhes dos presentes.")
+                    ])
+                    : React.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10" }, 
+                        items.map(item => React.createElement('div', { key: item.id, className: "presente-card bg-white rounded-[2.5rem] overflow-hidden shadow-md flex flex-col group border border-white" }, [
+                            React.createElement('div', { className: "relative overflow-hidden h-72" }, 
+                                React.createElement('img', { 
+                                    src: item.imageUrl || 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=400', 
+                                    className: "h-full w-full object-cover transition-transform duration-700 group-hover:scale-110",
+                                    alt: item.name
+                                })
+                            ),
+                            React.createElement('div', { className: "p-8 text-center flex-1 flex flex-col" }, [
+                                React.createElement('h3', { className: "text-xl font-bold mb-3 text-stone-700 font-serif" }, item.name),
+                                React.createElement('p', { className: "text-rose-500 font-black text-2xl mb-8" }, `R$ ${item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
+                                React.createElement('button', { 
+                                    onClick: () => setSelectedItem(item),
+                                    className: "mt-auto w-full py-4 bg-stone-800 text-white rounded-2xl font-bold hover:bg-rose-500 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-rose-200"
+                                }, [React.createElement(Gift, { size: 18 }), " Escolher este"])
+                            ])
+                        ]))
+                    )
+                ),
+
+                // Modal de Pagamento
+                selectedItem && React.createElement('div', { key: 'modal', className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[100]" }, 
+                    React.createElement('div', { className: "bg-white rounded-[3.5rem] p-8 md:p-14 max-w-md w-full relative text-center shadow-2xl animate-in zoom-in-95 duration-300" }, [
+                        React.createElement('button', { 
+                            onClick: () => setSelectedItem(null), 
+                            className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600 transition-colors p-2" 
+                        }, React.createElement(X, { size: 32 })),
+                        
+                        React.createElement('div', { className: "mb-8" }, [
+                            React.createElement('h3', { className: "text-2xl font-serif font-bold mb-1 text-stone-800" }, selectedItem.name),
+                            React.createElement('p', { className: "text-rose-500 font-black text-2xl" }, `R$ ${selectedItem.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
+                        ]),
+                        
+                        React.createElement('div', { className: "bg-stone-50 p-6 rounded-[2.5rem] border border-stone-100 mb-8" }, [
+                            React.createElement('div', { className: "bg-white p-4 inline-block rounded-[2rem] mb-6 shadow-sm border border-stone-100" }, 
+                                React.createElement('img', { 
+                                    src: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(generatePixPayload(selectedItem.price))}`, 
+                                    className: "w-48 h-48 md:w-52 md:h-52",
+                                    alt: "QR Code PIX"
+                                })
+                            ),
+                            
+                            React.createElement('div', { className: "text-left bg-white rounded-2xl p-5 mb-6 border border-stone-100 space-y-3" }, [
+                                React.createElement('div', { className: "flex items-start gap-3" }, [
+                                    React.createElement(User, { size: 16, className: "text-rose-400 mt-1" }), 
+                                    React.createElement('div', null, [
+                                        React.createElement('p', { className: "text-[10px] text-stone-400 uppercase font-bold tracking-tighter" }, "Favorecido"),
+                                        React.createElement('p', { className: "text-sm font-bold text-stone-700 leading-tight" }, PIX_NAME)
+                                    ])
+                                ]),
+                                React.createElement('div', { className: "flex items-start gap-3 border-t border-stone-50 pt-3" }, [
+                                    React.createElement(Landmark, { size: 16, className: "text-rose-400 mt-1" }), 
+                                    React.createElement('div', null, [
+                                        React.createElement('p', { className: "text-[10px] text-stone-400 uppercase font-bold tracking-tighter" }, "Banco"),
+                                        React.createElement('p', { className: "text-sm font-bold text-stone-700" }, PIX_BANK)
+                                    ])
+                                ])
+                            ]),
+
+                            React.createElement('button', { 
+                                onClick: () => copyPix(selectedItem),
+                                className: `w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-md ${copied ? 'bg-green-500 text-white' : 'bg-stone-800 text-white hover:bg-stone-900'}`
+                            }, copied ? [React.createElement(CheckCircle2, { size: 22 }), "Copiado com sucesso!"] : [React.createElement(Copy, { size: 20 }), "Copiar Código PIX"])
+                        ]),
+                        
+                        React.createElement('p', { className: "text-[10px] text-stone-300 uppercase tracking-widest" }, "Utilize a opção 'Pix Copia e Cola' no seu banco")
+                    ])
+                ),
+
+                // Footer
+                React.createElement('footer', { key: 'footer', className: "bg-white py-12 text-center text-stone-400 text-sm border-t border-stone-50" }, [
+                    React.createElement('p', null, "Com carinho, Carlos & Gabi"),
+                    React.createElement('p', { className: "mt-1 opacity-50" }, "2024 • Site de Chá de Panela")
+                ])
+            ]);
+        }
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
