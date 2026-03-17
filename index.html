@@ -26,18 +26,15 @@
     </div>
 
     <script type="module">
-        import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0';
+        import React, { useState, useEffect, useRef } from 'https://esm.sh/react@18.2.0';
         import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { 
-            Heart, Gift, Copy, CheckCircle2, QrCode, X, Landmark, User, Loader2, AlertCircle
+            Heart, Gift, Copy, CheckCircle2, QrCode, X, Landmark, User, Loader2, AlertCircle, Plus, Trash2, Settings
         } from 'https://esm.sh/lucide-react@0.263.0';
 
-        // ========================================================
-        // CONFIGURAÇÃO OFICIAL DO CARLOS
-        // ========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyBAbGiEArsEz2EnzTxt-8vngYtWtr6qYyU",
             authDomain: "cha-de-panela-f4d73.firebaseapp.com",
@@ -61,7 +58,7 @@
             auth = getAuth(app);
             db = getFirestore(app);
         } catch (e) {
-            console.error("Erro na inicialização do Firebase:", e);
+            console.error("Erro Firebase:", e);
         }
 
         function App() {
@@ -71,6 +68,11 @@
             const [error, setError] = useState(null);
             const [selectedItem, setSelectedItem] = useState(null);
             const [copied, setCopied] = useState(false);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [showAdminPanel, setShowAdminPanel] = useState(false);
+            
+            const [newItem, setNewItem] = useState({ name: '', price: '', imageUrl: '' });
+            const pressTimer = useRef(null);
 
             const generatePixPayload = (amount) => {
                 const formattedAmount = amount.toFixed(2);
@@ -97,22 +99,7 @@
 
             useEffect(() => {
                 if (!auth) return;
-                
-                const initAuth = async () => {
-                    try {
-                        await signInAnonymously(auth);
-                    } catch (err) {
-                        console.error("Erro Auth:", err.code);
-                        if (err.code === 'auth/configuration-not-found') {
-                            setError("O Login Anónimo precisa de ser ativado no Consola do Firebase (Authentication > Sign-in method).");
-                        } else {
-                            setError("Erro ao ligar ao servidor. Por favor, tente mais tarde.");
-                        }
-                        setLoading(false);
-                    }
-                };
-
-                initAuth();
+                signInAnonymously(auth).catch(() => setError("Erro ao autenticar."));
                 const unsubscribeAuth = onAuthStateChanged(auth, (u) => setUser(u));
                 return () => unsubscribeAuth();
             }, []);
@@ -126,11 +113,35 @@
                     setLoading(false);
                 }, (err) => {
                     console.error("Erro Firestore:", err);
-                    setError("Erro ao carregar a lista de presentes.");
                     setLoading(false);
                 });
                 return () => unsub();
             }, [user]);
+
+            const handleAddItem = async (e) => {
+                e.preventDefault();
+                if (!newItem.name || !newItem.price) return;
+                try {
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'presentes');
+                    await addDoc(colRef, {
+                        name: newItem.name,
+                        price: parseFloat(newItem.price),
+                        imageUrl: newItem.imageUrl || 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=400'
+                    });
+                    setNewItem({ name: '', price: '', imageUrl: '' });
+                } catch (err) {
+                    alert("Erro ao adicionar. Verifique as permissões.");
+                }
+            };
+
+            const handleDeleteItem = async (id) => {
+                if (!confirm("Remover este item da lista?")) return;
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'presentes', id));
+                } catch (err) {
+                    alert("Erro ao excluir.");
+                }
+            };
 
             const copyPix = (item) => {
                 const payload = generatePixPayload(item.price);
@@ -138,22 +149,29 @@
                 textArea.value = payload;
                 document.body.appendChild(textArea);
                 textArea.select();
-                try {
-                    document.execCommand('copy');
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                } catch (err) {
-                    console.error('Erro ao copiar', err);
-                }
+                document.execCommand('copy');
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
                 document.body.removeChild(textArea);
+            };
+
+            const handlePressStart = () => {
+                pressTimer.current = setTimeout(() => {
+                    setIsAdmin(true);
+                    setShowAdminPanel(true);
+                }, 3000);
+            };
+
+            const handlePressEnd = () => {
+                clearTimeout(pressTimer.current);
             };
 
             if (error) {
                 return React.createElement('div', { className: "min-h-screen flex items-center justify-center bg-[#faf7f2] p-6 text-center" }, 
-                    React.createElement('div', { className: "bg-white p-8 rounded-[2.5rem] shadow-xl max-w-sm border border-rose-100" }, [
+                    React.createElement('div', { className: "bg-white p-8 rounded-[2.5rem] shadow-xl max-w-sm" }, [
                         React.createElement(AlertCircle, { className: "text-rose-500 mx-auto mb-4", size: 48 }),
-                        React.createElement('h2', { className: "text-xl font-bold mb-2 text-stone-800" }, "Quase lá!"),
-                        React.createElement('p', { className: "text-stone-500 text-sm leading-relaxed" }, error)
+                        React.createElement('h2', { className: "text-xl font-bold mb-2" }, "Ops!"),
+                        React.createElement('p', { className: "text-stone-500" }, error)
                     ])
                 );
             }
@@ -168,24 +186,38 @@
                 // Header
                 React.createElement('header', { key: 'header', className: "bg-white pt-24 pb-20 px-4 text-center shadow-sm relative overflow-hidden" }, [
                     React.createElement('div', { key: 'gradient', className: "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-200 via-rose-400 to-rose-200" }),
-                    React.createElement(Heart, { key: 'icon', className: "w-14 h-14 text-rose-400 mx-auto mb-6 fill-rose-50" }),
+                    React.createElement('div', { 
+                        key: 'icon-container', 
+                        className: "cursor-pointer select-none inline-block",
+                        onMouseDown: handlePressStart, 
+                        onMouseUp: handlePressEnd,
+                        onTouchStart: handlePressStart,
+                        onTouchEnd: handlePressEnd
+                    }, 
+                        React.createElement(Heart, { className: "w-14 h-14 text-rose-400 mx-auto mb-6 fill-rose-50" })
+                    ),
                     React.createElement('h1', { key: 'title', className: "text-5xl md:text-7xl font-serif mb-4 tracking-tight text-stone-800" }, "Casa Nova Carlos e Gabi"),
                     React.createElement('p', { key: 'text', className: "text-stone-400 italic text-lg max-w-lg mx-auto leading-relaxed" }, "“O melhor presente é a vossa presença, mas se quiserem ajudar com a nossa casa nova...”")
                 ]),
 
-                // Grid de Presentes
+                // Lista de Presentes
                 React.createElement('main', { key: 'main', className: "max-w-7xl mx-auto px-6 py-16" }, 
                     items.length === 0 
                     ? React.createElement('div', { className: "text-center py-24 bg-white rounded-[3rem] shadow-sm border border-stone-100" }, [
                         React.createElement(Gift, { className: "mx-auto text-stone-200 mb-6", size: 64 }),
                         React.createElement('h2', { className: "text-2xl font-serif text-stone-600 mb-2" }, "A lista está quase pronta"),
-                        React.createElement('p', { className: "text-stone-400" }, "Estamos a organizar os últimos detalhes dos presentes.")
+                        React.createElement('p', { className: "text-stone-400" }, "Estamos a organizar os últimos detalhes.")
                     ])
                     : React.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10" }, 
-                        items.map(item => React.createElement('div', { key: item.id, className: "presente-card bg-white rounded-[2.5rem] overflow-hidden shadow-md flex flex-col group border border-white" }, [
+                        items.map(item => React.createElement('div', { key: item.id, className: "presente-card bg-white rounded-[2.5rem] overflow-hidden shadow-md flex flex-col group border border-white relative" }, [
+                            isAdmin && React.createElement('button', {
+                                onClick: () => handleDeleteItem(item.id),
+                                className: "absolute top-4 right-4 bg-rose-500 text-white p-2 rounded-full shadow-lg z-10 hover:bg-rose-600 transition-colors"
+                            }, React.createElement(Trash2, { size: 16 })),
+                            
                             React.createElement('div', { className: "relative overflow-hidden h-72" }, 
                                 React.createElement('img', { 
-                                    src: item.imageUrl || 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=400', 
+                                    src: item.imageUrl, 
                                     className: "h-full w-full object-cover transition-transform duration-700 group-hover:scale-110",
                                     alt: item.name
                                 })
@@ -195,19 +227,67 @@
                                 React.createElement('p', { className: "text-rose-500 font-black text-2xl mb-8" }, `R$ ${item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
                                 React.createElement('button', { 
                                     onClick: () => setSelectedItem(item),
-                                    className: "mt-auto w-full py-4 bg-stone-800 text-white rounded-2xl font-bold hover:bg-rose-500 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-rose-200"
+                                    className: "mt-auto w-full py-4 bg-stone-800 text-white rounded-2xl font-bold hover:bg-rose-500 transition-all flex items-center justify-center gap-2 shadow-lg"
                                 }, [React.createElement(Gift, { size: 18 }), " Escolher este"])
                             ])
                         ]))
                     )
                 ),
 
-                // Modal de Pagamento
-                selectedItem && React.createElement('div', { key: 'modal', className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[100]" }, 
-                    React.createElement('div', { className: "bg-white rounded-[3.5rem] p-8 md:p-14 max-w-md w-full relative text-center shadow-2xl animate-in zoom-in-95 duration-300" }, [
+                // Painel Admin (Modal)
+                showAdminPanel && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[200]" }, 
+                    React.createElement('div', { className: "bg-white rounded-[3rem] p-8 md:p-12 max-w-md w-full relative shadow-2xl" }, [
+                        React.createElement('button', { 
+                            onClick: () => setShowAdminPanel(false), 
+                            className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600" 
+                        }, React.createElement(X, { size: 24 })),
+                        
+                        React.createElement('div', { className: "flex items-center gap-3 mb-8" }, [
+                            React.createElement(Settings, { className: "text-rose-400" }),
+                            React.createElement('h3', { className: "text-2xl font-bold text-stone-800" }, "Admin: Presentes")
+                        ]),
+
+                        React.createElement('form', { onSubmit: handleAddItem, className: "space-y-4" }, [
+                            React.createElement('div', null, [
+                                React.createElement('label', { className: "text-xs font-bold text-stone-400 uppercase ml-2" }, "Nome do Presente"),
+                                React.createElement('input', { 
+                                    value: newItem.name, 
+                                    onChange: e => setNewItem({...newItem, name: e.target.value}),
+                                    className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none"
+                                })
+                            ]),
+                            React.createElement('div', null, [
+                                React.createElement('label', { className: "text-xs font-bold text-stone-400 uppercase ml-2" }, "Preço (R$)"),
+                                React.createElement('input', { 
+                                    type: "number", step: "0.01",
+                                    value: newItem.price, 
+                                    onChange: e => setNewItem({...newItem, price: e.target.value}),
+                                    className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none"
+                                })
+                            ]),
+                            React.createElement('div', null, [
+                                React.createElement('label', { className: "text-xs font-bold text-stone-400 uppercase ml-2" }, "Link da Foto"),
+                                React.createElement('input', { 
+                                    value: newItem.imageUrl, 
+                                    onChange: e => setNewItem({...newItem, imageUrl: e.target.value}),
+                                    placeholder: "https://...",
+                                    className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none"
+                                })
+                            ]),
+                            React.createElement('button', { 
+                                type: "submit",
+                                className: "w-full py-4 bg-rose-500 text-white rounded-2xl font-bold shadow-lg hover:bg-rose-600 flex items-center justify-center gap-2"
+                            }, [React.createElement(Plus, { size: 20 }), "Adicionar"])
+                        ])
+                    ])
+                ),
+
+                // Modal PIX
+                selectedItem && React.createElement('div', { key: 'modal-pay', className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[100]" }, 
+                    React.createElement('div', { className: "bg-white rounded-[3.5rem] p-8 md:p-14 max-w-md w-full relative text-center shadow-2xl" }, [
                         React.createElement('button', { 
                             onClick: () => setSelectedItem(null), 
-                            className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600 transition-colors p-2" 
+                            className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600 p-2" 
                         }, React.createElement(X, { size: 32 })),
                         
                         React.createElement('div', { className: "mb-8" }, [
@@ -220,7 +300,7 @@
                                 React.createElement('img', { 
                                     src: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(generatePixPayload(selectedItem.price))}`, 
                                     className: "w-48 h-48 md:w-52 md:h-52",
-                                    alt: "QR Code PIX"
+                                    alt: "QR Code"
                                 })
                             ),
                             
@@ -228,14 +308,14 @@
                                 React.createElement('div', { className: "flex items-start gap-3" }, [
                                     React.createElement(User, { size: 16, className: "text-rose-400 mt-1" }), 
                                     React.createElement('div', null, [
-                                        React.createElement('p', { className: "text-[10px] text-stone-400 uppercase font-bold tracking-tighter" }, "Favorecido"),
-                                        React.createElement('p', { className: "text-sm font-bold text-stone-700 leading-tight" }, PIX_NAME)
+                                        React.createElement('p', { className: "text-[10px] text-stone-400 uppercase font-bold" }, "Favorecido"),
+                                        React.createElement('p', { className: "text-sm font-bold text-stone-700" }, PIX_NAME)
                                     ])
                                 ]),
                                 React.createElement('div', { className: "flex items-start gap-3 border-t border-stone-50 pt-3" }, [
                                     React.createElement(Landmark, { size: 16, className: "text-rose-400 mt-1" }), 
                                     React.createElement('div', null, [
-                                        React.createElement('p', { className: "text-[10px] text-stone-400 uppercase font-bold tracking-tighter" }, "Banco"),
+                                        React.createElement('p', { className: "text-[10px] text-stone-400 uppercase font-bold" }, "Banco"),
                                         React.createElement('p', { className: "text-sm font-bold text-stone-700" }, PIX_BANK)
                                     ])
                                 ])
@@ -243,18 +323,15 @@
 
                             React.createElement('button', { 
                                 onClick: () => copyPix(selectedItem),
-                                className: `w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-md ${copied ? 'bg-green-500 text-white' : 'bg-stone-800 text-white hover:bg-stone-900'}`
-                            }, copied ? [React.createElement(CheckCircle2, { size: 22 }), "Copiado com sucesso!"] : [React.createElement(Copy, { size: 20 }), "Copiar Código PIX"])
-                        ]),
-                        
-                        React.createElement('p', { className: "text-[10px] text-stone-300 uppercase tracking-widest" }, "Utilize a opção 'Pix Copia e Cola' no seu banco")
+                                className: `w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all ${copied ? 'bg-green-500 text-white' : 'bg-stone-800 text-white hover:bg-stone-900'}`
+                            }, copied ? [React.createElement(CheckCircle2, { size: 22 }), "Copiado!"] : [React.createElement(Copy, { size: 20 }), "Copiar Código PIX"])
+                        ])
                     ])
                 ),
 
                 // Footer
                 React.createElement('footer', { key: 'footer', className: "bg-white py-12 text-center text-stone-400 text-sm border-t border-stone-50" }, [
-                    React.createElement('p', null, "Com carinho, Carlos & Gabi"),
-                    React.createElement('p', { className: "mt-1 opacity-50" }, "2024 • Site de Chá de Panela")
+                    React.createElement('p', null, "Com carinho, Carlos & Gabi")
                 ])
             ]);
         }
