@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-pt">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,7 +21,7 @@
         <div class="min-h-screen flex items-center justify-center">
             <div class="flex flex-col items-center gap-4">
                 <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-rose-500"></div>
-                <p class="text-stone-400 animate-pulse">A carregar o vosso site...</p>
+                <p class="text-stone-400 animate-pulse">Carregando o site...</p>
             </div>
         </div>
     </div>
@@ -47,46 +47,46 @@
             appId: "1:798143128950:web:c6a615da5aa7716fffc657"
         };
 
-        const appId = 'cha-carlos-gabi-v3';
+        const idApp = 'cha-carlos-gabi-v3';
         
         // Dados do PIX
-        const PIX_KEY = "07607079955"; 
-        const PIX_NAME = "CARLOS EDUARDO SOTOMAIOR ALBERTI";
-        const PIX_SHORT_NAME = "Carlos";
-        const PIX_CITY = "SAO PAULO";
-        const PIX_BANK = "BANCO SANTANDER (BRASIL) S.A.";
+        const PIX_CHAVE = "07607079955"; 
+        const PIX_NOME = "CARLOS EDUARDO SOTOMAIOR ALBERTI";
+        const PIX_NOME_CURTO = "Carlos";
+        const PIX_CIDADE = "SAO PAULO";
+        const PIX_BANCO = "BANCO SANTANDER (BRASIL) S.A.";
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
         function App() {
-            const [items, setItems] = useState([]);
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [selectedItem, setSelectedItem] = useState(null);
-            const [editingItem, setEditingItem] = useState(null);
-            const [copied, setCopied] = useState(false);
+            const [itens, setItens] = useState([]);
+            const [usuario, setUsuario] = useState(null);
+            const [carregando, setCarregando] = useState(true);
+            const [itemSelecionado, setItemSelecionado] = useState(null);
+            const [itemEditando, setItemEditando] = useState(null);
+            const [copiado, setCopiado] = useState(false);
             
             // Estado Admin
-            const [isAdmin, setIsAdmin] = useState(false);
-            const [showLoginModal, setShowLoginModal] = useState(false);
-            const [loginData, setLoginData] = useState({ username: '', password: '' });
-            const [loginError, setLoginError] = useState('');
+            const [eAdmin, setEAdmin] = useState(false);
+            const [mostrarModalLogin, setMostrarModalLogin] = useState(false);
+            const [dadosLogin, setDadosLogin] = useState({ usuario: '', senha: '' });
+            const [erroLogin, setErroLogin] = useState('');
             
-            // Estado do Formulário (Add/Edit)
-            const [form, setForm] = useState({ name: '', price: '', imageUrl: '' });
+            // Estado do Formulário (Adicionar/Editar)
+            const [formulario, setFormulario] = useState({ nome: '', preco: '', urlImagem: '' });
 
-            const generatePixPayload = (amount) => {
-                const formattedAmount = Number(amount).toFixed(2);
+            const gerarPayloadPix = (valor) => {
+                const valorFormatado = Number(valor).toFixed(2);
                 const f = (id, val) => {
                     const len = val.length.toString().padStart(2, '0');
                     return `${id}${len}${val}`;
                 };
                 const gui = "0014BR.GOV.BCB.PIX";
-                const key = f("01", PIX_KEY);
-                const merchantAccount = f("26", gui + key);
-                let payload = "000201" + merchantAccount + "520400005303986" + f("54", formattedAmount) + "5802BR" + f("59", PIX_SHORT_NAME.toUpperCase()) + f("60", PIX_CITY.toUpperCase()) + "62070503***6304";
+                const chave = f("01", PIX_CHAVE);
+                const contaMercante = f("26", gui + chave);
+                let payload = "000201" + contaMercante + "520400005303986" + f("54", valorFormatado) + "5802BR" + f("59", PIX_NOME_CURTO.toUpperCase()) + f("60", PIX_CIDADE.toUpperCase()) + "62070503***6304";
                 
                 let crc = 0xFFFF;
                 for (let i = 0; i < payload.length; i++) {
@@ -101,130 +101,133 @@
             };
 
             useEffect(() => {
-                signInAnonymously(auth);
-                const unsubAuth = onAuthStateChanged(auth, setUser);
-                return () => unsubAuth();
+                const initAuth = async () => {
+                    await signInAnonymously(auth);
+                };
+                initAuth();
+                const desinscreverAuth = onAuthStateChanged(auth, setUsuario);
+                return () => desinscreverAuth();
             }, []);
 
             useEffect(() => {
-                if (!user) return;
-                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'presentes');
-                const unsub = onSnapshot(colRef, (snap) => {
-                    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setItems(data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-                    setLoading(false);
+                if (!usuario) return;
+                const refColecao = collection(db, 'artifacts', idApp, 'public', 'data', 'presentes');
+                const desinscrever = onSnapshot(refColecao, (snap) => {
+                    const dados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setItens(dados.sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0)));
+                    setCarregando(false);
+                }, (error) => {
+                    console.error("Erro ao buscar dados:", error);
                 });
-                return () => unsub();
-            }, [user]);
+                return () => desinscrever();
+            }, [usuario]);
 
-            const handleLogin = (e) => {
+            const realizarLogin = (e) => {
                 e.preventDefault();
-                if (loginData.username === 'carlos_adm' && loginData.password === 'carlos_adm') {
-                    setIsAdmin(true);
-                    setShowLoginModal(false);
-                    setLoginError('');
+                if (dadosLogin.usuario === 'carlos_adm' && dadosLogin.senha === 'carlos_adm') {
+                    setEAdmin(true);
+                    setMostrarModalLogin(false);
+                    setErroLogin('');
                 } else {
-                    setLoginError('Credenciais incorretas.');
+                    setErroLogin('Credenciais incorretas.');
                 }
             };
 
-            const handleSave = async (e) => {
+            const salvarItem = async (e) => {
                 e.preventDefault();
-                if (!form.name || !form.price) return;
+                if (!formulario.nome || !formulario.preco || !usuario) return;
 
-                const data = {
-                    name: form.name,
-                    price: parseFloat(String(form.price).replace(',', '.')),
-                    imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=400',
+                const dados = {
+                    name: formulario.nome,
+                    price: parseFloat(String(formulario.preco).replace(',', '.')),
+                    imageUrl: formulario.urlImagem || 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=400',
                     updatedAt: Date.now()
                 };
 
                 try {
-                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'presentes');
-                    if (editingItem) {
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'presentes', editingItem.id), data);
-                        setEditingItem(null);
+                    if (itemEditando) {
+                        await updateDoc(doc(db, 'artifacts', idApp, 'public', 'data', 'presentes', itemEditando.id), dados);
+                        setItemEditando(null);
                     } else {
-                        await addDoc(colRef, { ...data, createdAt: Date.now() });
+                        await addDoc(collection(db, 'artifacts', idApp, 'public', 'data', 'presentes'), { ...dados, criadoEm: Date.now() });
                     }
-                    setForm({ name: '', price: '', imageUrl: '' });
+                    setFormulario({ nome: '', preco: '', urlImagem: '' });
                 } catch (err) {
-                    alert("Erro ao guardar as alterações.");
+                    console.error(err);
                 }
             };
 
-            const startEdit = (item) => {
-                setEditingItem(item);
-                setForm({ name: item.name, price: item.price, imageUrl: item.imageUrl });
+            const iniciarEdicao = (item) => {
+                setItemEditando(item);
+                setFormulario({ nome: item.name, preco: item.price, urlImagem: item.imageUrl });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
-            const handleDelete = async (id) => {
-                if (confirm("Tens a certeza que desejas remover este item?")) {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'presentes', id));
-                }
+            const deletarItem = async (id) => {
+                if (!usuario) return;
+                await deleteDoc(doc(db, 'artifacts', idApp, 'public', 'data', 'presentes', id));
             };
 
-            const copyToClipboard = (text) => {
+            const copiarParaTransferencia = (texto) => {
                 const el = document.createElement('textarea');
-                el.value = text;
+                el.value = texto;
                 document.body.appendChild(el);
                 el.select();
                 document.execCommand('copy');
                 document.body.removeChild(el);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2000);
             };
 
-            if (loading) return React.createElement('div', { className: "min-h-screen flex items-center justify-center bg-[#faf7f2]" }, React.createElement(Loader2, { className: "animate-spin text-rose-500 w-12 h-12" }));
+            if (carregando) return React.createElement('div', { className: "min-h-screen flex items-center justify-center bg-[#faf7f2]" }, React.createElement(Loader2, { className: "animate-spin text-rose-500 w-12 h-12" }));
 
             return React.createElement('div', { className: "min-h-screen" }, [
-                // Header
-                React.createElement('header', { key: 'header', className: "bg-white pt-24 pb-20 px-4 text-center shadow-sm relative overflow-hidden" }, [
+                // Cabeçalho (Header)
+                React.createElement('header', { key: 'header', className: "bg-white pt-20 pb-16 px-4 text-center shadow-sm relative overflow-hidden" }, [
                     React.createElement('div', { key: 'bar', className: "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-200 via-rose-400 to-rose-200" }),
-                    React.createElement(Heart, { className: "w-14 h-14 text-rose-400 mx-auto mb-6 fill-rose-50" }),
-                    React.createElement('h1', { className: "text-5xl md:text-7xl font-serif mb-4 tracking-tight text-stone-800" }, "Casa Nova Carlos e Gabi"),
-                    React.createElement('p', { className: "text-stone-400 italic text-lg max-w-lg mx-auto" }, "“Um novo capítulo que começa com o vosso carinho.”")
+                    React.createElement(Heart, { className: "w-10 h-10 text-rose-400 mx-auto mb-4 fill-rose-50" }),
+                    React.createElement('h1', { className: "text-5xl md:text-7xl font-serif mb-1 tracking-tight text-stone-800" }, "Carlos e Gabi"),
+                    // FRASE ATUALIZADA - MENOS CAFONA
+                    React.createElement('p', { className: "text-stone-400 text-lg max-w-2xl mx-auto mb-2 tracking-wide uppercase text-sm font-medium" }, "Celebrando o nosso novo capítulo com quem mais amamos")
                 ]),
 
-                // Painel Admin (Formulário)
-                isAdmin && React.createElement('section', { key: 'admin-panel', className: "max-w-4xl mx-auto px-6 mt-12" }, 
-                    React.createElement('div', { className: `p-8 rounded-[2.5rem] shadow-xl border-2 ${editingItem ? 'border-amber-200 bg-amber-50/20' : 'border-white bg-white'}` }, [
+                // Painel do Administrador
+                eAdmin && React.createElement('section', { key: 'admin-panel', className: "max-w-4xl mx-auto px-6 mt-12" }, 
+                    React.createElement('div', { className: `p-8 rounded-[2.5rem] shadow-xl border-2 ${itemEditando ? 'border-amber-200 bg-amber-50/20' : 'border-white bg-white'}` }, [
                         React.createElement('div', { className: "flex items-center gap-2 mb-6" }, [
-                            editingItem ? React.createElement(Pencil, { className: "text-amber-500" }) : React.createElement(Plus, { className: "text-rose-500" }),
-                            React.createElement('h2', { className: "text-xl font-bold" }, editingItem ? `A editar: ${editingItem.name}` : "Adicionar Novo Presente")
+                            itemEditando ? React.createElement(Pencil, { className: "text-amber-500" }) : React.createElement(Plus, { className: "text-rose-500" }),
+                            React.createElement('h2', { className: "text-xl font-bold" }, itemEditando ? `Editando: ${itemEditando.name}` : "Adicionar Novo Presente")
                         ]),
-                        React.createElement('form', { onSubmit: handleSave, className: "grid grid-cols-1 md:grid-cols-3 gap-4" }, [
+                        React.createElement('form', { onSubmit: salvarItem, className: "grid grid-cols-1 md:grid-cols-3 gap-4" }, [
                             React.createElement('div', null, [
                                 React.createElement('label', { className: "text-[10px] font-bold text-stone-400 uppercase ml-2" }, "Nome"),
-                                React.createElement('input', { value: form.name, onChange: e => setForm({...form, name: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none focus:ring-2 ring-rose-200" })
+                                React.createElement('input', { value: formulario.nome, onChange: e => setFormulario({...formulario, nome: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none focus:ring-2 ring-rose-200" })
                             ]),
                             React.createElement('div', null, [
                                 React.createElement('label', { className: "text-[10px] font-bold text-stone-400 uppercase ml-2" }, "Preço (R$)"),
-                                React.createElement('input', { type: "number", step: "0.01", value: form.price, onChange: e => setForm({...form, price: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none focus:ring-2 ring-rose-200" })
+                                React.createElement('input', { type: "number", step: "0.01", value: formulario.preco, onChange: e => setFormulario({...formulario, preco: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none focus:ring-2 ring-rose-200" })
                             ]),
                             React.createElement('div', null, [
                                 React.createElement('label', { className: "text-[10px] font-bold text-stone-400 uppercase ml-2" }, "URL da Imagem"),
-                                React.createElement('input', { value: form.imageUrl, onChange: e => setForm({...form, imageUrl: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none focus:ring-2 ring-rose-200" })
+                                React.createElement('input', { value: formulario.urlImagem, onChange: e => setFormulario({...formulario, urlImagem: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none focus:ring-2 ring-rose-200" })
                             ]),
                             React.createElement('div', { className: "md:col-span-3 flex gap-2" }, [
-                                React.createElement('button', { type: "submit", className: `flex-1 py-4 rounded-2xl font-bold text-white shadow-lg transition-all ${editingItem ? 'bg-amber-500 hover:bg-amber-600' : 'bg-rose-500 hover:bg-rose-600'}` }, 
-                                    editingItem ? "Atualizar Presente" : "Guardar na Lista"
+                                React.createElement('button', { type: "submit", className: `flex-1 py-4 rounded-2xl font-bold text-white shadow-lg transition-all ${itemEditando ? 'bg-amber-500 hover:bg-amber-600' : 'bg-rose-500 hover:bg-rose-600'}` }, 
+                                    itemEditando ? "Atualizar Presente" : "Salvar na Lista"
                                 ),
-                                editingItem && React.createElement('button', { type: "button", onClick: () => { setEditingItem(null); setForm({name:'', price:'', imageUrl:''}); }, className: "px-6 bg-stone-200 text-stone-600 rounded-2xl font-bold hover:bg-stone-300" }, React.createElement(X))
+                                itemEditando && React.createElement('button', { type: "button", onClick: () => { setItemEditando(null); setFormulario({nome:'', preco:'', urlImagem:''}); }, className: "px-6 bg-stone-200 text-stone-600 rounded-2xl font-bold hover:bg-stone-300" }, React.createElement(X))
                             ])
                         ])
                     ])
                 ),
 
-                // Grid de Presentes
+                // Lista de Presentes
                 React.createElement('main', { key: 'main', className: "max-w-7xl mx-auto px-6 py-16" }, 
                     React.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10" }, 
-                        items.map(item => React.createElement('div', { key: item.id, className: "presente-card bg-white rounded-[2.5rem] overflow-hidden shadow-md flex flex-col group border border-white relative" }, [
-                            // Botões Admin nos Cards
-                            isAdmin && React.createElement('div', { className: "absolute top-4 right-4 flex gap-2 z-20" }, [
-                                React.createElement('button', { onClick: () => startEdit(item), className: "bg-white/90 p-2 rounded-full shadow-lg text-amber-500 hover:bg-amber-500 hover:text-white transition-all" }, React.createElement(Pencil, { size: 18 })),
-                                React.createElement('button', { onClick: () => handleDelete(item.id), className: "bg-white/90 p-2 rounded-full shadow-lg text-rose-500 hover:bg-rose-500 hover:text-white transition-all" }, React.createElement(Trash2, { size: 18 }))
+                        itens.map(item => React.createElement('div', { key: item.id, className: "presente-card bg-white rounded-[2.5rem] overflow-hidden shadow-md flex flex-col group border border-white relative" }, [
+                            eAdmin && React.createElement('div', { className: "absolute top-4 right-4 flex gap-2 z-20" }, [
+                                React.createElement('button', { onClick: () => iniciarEdicao(item), className: "bg-white/90 p-2 rounded-full shadow-lg text-amber-500 hover:bg-amber-500 hover:text-white transition-all" }, React.createElement(Pencil, { size: 18 })),
+                                React.createElement('button', { onClick: () => deletarItem(item.id), className: "bg-white/90 p-2 rounded-full shadow-lg text-rose-500 hover:bg-rose-500 hover:text-white transition-all" }, React.createElement(Trash2, { size: 18 }))
                             ]),
                             
                             React.createElement('div', { className: "h-72 overflow-hidden" }, 
@@ -236,40 +239,40 @@
                                     React.createElement('p', { className: "text-rose-500 font-black text-2xl mb-8" }, `R$ ${item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
                                 ]),
                                 React.createElement('button', { 
-                                    onClick: () => setSelectedItem(item),
+                                    onClick: () => setItemSelecionado(item),
                                     className: "w-full py-4 bg-stone-800 text-white rounded-2xl font-bold hover:bg-rose-500 transition-all flex items-center justify-center gap-2 shadow-lg"
-                                }, [React.createElement(Gift, { size: 18 }), "Escolher este"])
+                                }, [React.createElement(Gift, { size: 18 }), "Presentear"])
                             ])
                         ]))
                     )
                 ),
 
                 // Modal Login
-                showLoginModal && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[200]" }, 
+                mostrarModalLogin && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[200]" }, 
                     React.createElement('div', { className: "bg-white rounded-[3rem] p-10 max-w-sm w-full relative shadow-2xl text-center" }, [
-                        React.createElement('button', { onClick: () => setShowLoginModal(false), className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600" }, React.createElement(X)),
+                        React.createElement('button', { onClick: () => setMostrarModalLogin(false), className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600" }, React.createElement(X)),
                         React.createElement(Lock, { className: "mx-auto text-rose-400 mb-4", size: 40 }),
-                        React.createElement('h2', { className: "text-2xl font-bold mb-8" }, "Acesso Restrito"),
-                        React.createElement('form', { onSubmit: handleLogin, className: "space-y-4" }, [
-                            React.createElement('input', { placeholder: "Utilizador", value: loginData.username, onChange: e => setLoginData({...loginData, username: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none" }),
-                            React.createElement('input', { type: "password", placeholder: "Senha", value: loginData.password, onChange: e => setLoginData({...loginData, password: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none" }),
-                            loginError && React.createElement('p', { className: "text-rose-500 text-xs" }, loginError),
+                        React.createElement('h2', { className: "text-2xl font-bold mb-8" }, "Área Restrita"),
+                        React.createElement('form', { onSubmit: realizarLogin, className: "space-y-4" }, [
+                            React.createElement('input', { placeholder: "Usuário", value: dadosLogin.usuario, onChange: e => setDadosLogin({...dadosLogin, usuario: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none" }),
+                            React.createElement('input', { type: "password", placeholder: "Senha", value: dadosLogin.senha, onChange: e => setDadosLogin({...dadosLogin, senha: e.target.value}), className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none" }),
+                            erroLogin && React.createElement('p', { className: "text-rose-500 text-xs" }, erroLogin),
                             React.createElement('button', { type: "submit", className: "w-full py-4 bg-stone-800 text-white rounded-2xl font-bold hover:bg-black transition-all" }, "Entrar")
                         ])
                     ])
                 ),
 
                 // Modal Pagamento (PIX)
-                selectedItem && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[100]" }, 
+                itemSelecionado && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[100]" }, 
                     React.createElement('div', { className: "bg-white rounded-[3.5rem] p-8 md:p-14 max-w-md w-full relative text-center shadow-2xl" }, [
-                        React.createElement('button', { onClick: () => setSelectedItem(null), className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600" }, React.createElement(X, { size: 32 })),
-                        React.createElement('h3', { className: "text-2xl font-serif font-bold mb-1" }, selectedItem.name),
-                        React.createElement('p', { className: "text-rose-500 font-black text-2xl mb-8" }, `R$ ${selectedItem.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
+                        React.createElement('button', { onClick: () => setItemSelecionado(null), className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600" }, React.createElement(X, { size: 32 })),
+                        React.createElement('h3', { className: "text-2xl font-serif font-bold mb-1" }, itemSelecionado.name),
+                        React.createElement('p', { className: "text-rose-500 font-black text-2xl mb-8" }, `R$ ${itemSelecionado.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
                         
                         React.createElement('div', { className: "bg-stone-50 p-6 rounded-[2.5rem] border border-stone-100 mb-8" }, [
                             React.createElement('div', { className: "bg-white p-4 inline-block rounded-[2rem] mb-6 shadow-sm border border-stone-100" }, 
                                 React.createElement('img', { 
-                                    src: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(generatePixPayload(selectedItem.price))}`, 
+                                    src: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(gerarPayloadPix(itemSelecionado.price))}`, 
                                     className: "w-48 h-48", alt: "QR Code PIX" 
                                 })
                             ),
@@ -278,32 +281,32 @@
                                     React.createElement(User, { size: 16, className: "text-rose-400 mt-1" }),
                                     React.createElement('div', null, [
                                         React.createElement('p', { className: "text-[10px] text-stone-400 uppercase font-bold" }, "Favorecido"),
-                                        React.createElement('p', { className: "text-sm font-bold text-stone-700" }, PIX_NAME)
+                                        React.createElement('p', { className: "text-sm font-bold text-stone-700" }, PIX_NOME)
                                     ])
                                 ]),
                                 React.createElement('div', { className: "flex items-start gap-3 border-t border-stone-50 pt-3" }, [
                                     React.createElement(Landmark, { size: 16, className: "text-rose-400 mt-1" }),
                                     React.createElement('div', null, [
                                         React.createElement('p', { className: "text-[10px] text-stone-400 uppercase font-bold" }, "Banco"),
-                                        React.createElement('p', { className: "text-sm font-bold text-stone-700" }, PIX_BANK)
+                                        React.createElement('p', { className: "text-sm font-bold text-stone-700" }, PIX_BANCO)
                                     ])
                                 ])
                             ]),
                             React.createElement('button', { 
-                                onClick: () => copyToClipboard(generatePixPayload(selectedItem.price)),
-                                className: `w-full py-5 rounded-2xl font-black transition-all flex items-center justify-center gap-3 ${copied ? 'bg-green-500 text-white' : 'bg-stone-800 text-white hover:bg-black'}`
-                            }, copied ? [React.createElement(CheckCircle2, { size: 22 }), "Código Copiado!"] : [React.createElement(Copy, { size: 20 }), "Copiar Código PIX"])
+                                onClick: () => copiarParaTransferencia(gerarPayloadPix(itemSelecionado.price)),
+                                className: `w-full py-5 rounded-2xl font-black transition-all flex items-center justify-center gap-3 ${copiado ? 'bg-green-500 text-white' : 'bg-stone-800 text-white hover:bg-black'}`
+                            }, copiado ? [React.createElement(CheckCircle2, { size: 22 }), "Código Copiado!"] : [React.createElement(Copy, { size: 20 }), "Copiar Código PIX"])
                         ])
                     ])
                 ),
 
-                // Footer e Botão Admin
+                // Rodapé (Footer)
                 React.createElement('footer', { key: 'footer', className: "bg-white py-12 text-center text-stone-400 text-sm border-t border-stone-50 relative" }, [
-                    React.createElement('p', { className: "mb-6" }, "Com carinho, Carlos & Gabi"),
+                    React.createElement('p', { className: "mb-6" }, "Carlos & Gabi"),
                     React.createElement('button', { 
-                        onClick: () => isAdmin ? setIsAdmin(false) : setShowLoginModal(true),
+                        onClick: () => eAdmin ? setEAdmin(false) : setMostrarModalLogin(true),
                         className: "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-stone-50 text-stone-300 hover:text-rose-400 transition-all text-[10px] font-bold uppercase"
-                    }, isAdmin ? [React.createElement(Unlock, { size: 12 }), "Sair do Painel"] : [React.createElement(Lock, { size: 12 }), "Painel Admin"])
+                    }, eAdmin ? [React.createElement(Unlock, { size: 12 }), "Sair do Painel"] : [React.createElement(Lock, { size: 12 }), "Painel Admin"])
                 ])
             ]);
         }
