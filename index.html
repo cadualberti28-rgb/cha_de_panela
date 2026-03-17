@@ -32,7 +32,7 @@
         import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { 
-            Heart, Gift, Copy, CheckCircle2, QrCode, X, Landmark, User, Loader2, AlertCircle, Plus, Trash2, Settings
+            Heart, Gift, Copy, CheckCircle2, QrCode, X, Landmark, User, Loader2, AlertCircle, Plus, Trash2, Settings, Lock, Unlock
         } from 'https://esm.sh/lucide-react@0.263.0';
 
         const firebaseConfig = {
@@ -68,11 +68,15 @@
             const [error, setError] = useState(null);
             const [selectedItem, setSelectedItem] = useState(null);
             const [copied, setCopied] = useState(false);
+            
+            // Estados do Admin
             const [isAdmin, setIsAdmin] = useState(false);
+            const [showLoginModal, setShowLoginModal] = useState(false);
             const [showAdminPanel, setShowAdminPanel] = useState(false);
+            const [loginData, setLoginData] = useState({ username: '', password: '' });
+            const [loginError, setLoginError] = useState('');
             
             const [newItem, setNewItem] = useState({ name: '', price: '', imageUrl: '' });
-            const pressTimer = useRef(null);
 
             const generatePixPayload = (amount) => {
                 const formattedAmount = amount.toFixed(2);
@@ -113,14 +117,28 @@
                     setLoading(false);
                 }, (err) => {
                     console.error("Erro Firestore:", err);
-                    setError("Erro ao carregar a lista. Verifique as Regras de Segurança no Firebase.");
+                    setError("Erro ao carregar a lista.");
                     setLoading(false);
                 });
                 return () => unsub();
             }, [user]);
 
+            const handleLogin = (e) => {
+                e.preventDefault();
+                // Credenciais Fixas para o Admin
+                if (loginData.username === 'carlos_adm' && loginData.password === 'carlos_adm') {
+                    setIsAdmin(true);
+                    setShowLoginModal(false);
+                    setLoginError('');
+                    setLoginData({ username: '', password: '' });
+                } else {
+                    setLoginError('Credenciais incorretas.');
+                }
+            };
+
             const handleAddItem = async (e) => {
                 e.preventDefault();
+                if (!isAdmin) return;
                 if (!newItem.name || !newItem.price) return;
                 try {
                     const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'presentes');
@@ -131,11 +149,12 @@
                     });
                     setNewItem({ name: '', price: '', imageUrl: '' });
                 } catch (err) {
-                    alert("Erro ao adicionar. Verifique se as Regras do Firestore permitem escrita.");
+                    alert("Erro ao adicionar.");
                 }
             };
 
             const handleDeleteItem = async (id) => {
+                if (!isAdmin) return;
                 if (!confirm("Remover este item da lista?")) return;
                 try {
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'presentes', id));
@@ -156,23 +175,12 @@
                 document.body.removeChild(textArea);
             };
 
-            const handlePressStart = () => {
-                pressTimer.current = setTimeout(() => {
-                    setIsAdmin(true);
-                    setShowAdminPanel(true);
-                }, 3000);
-            };
-
-            const handlePressEnd = () => {
-                clearTimeout(pressTimer.current);
-            };
-
             if (error) {
                 return React.createElement('div', { className: "min-h-screen flex items-center justify-center bg-[#faf7f2] p-6 text-center" }, 
                     React.createElement('div', { className: "bg-white p-8 rounded-[2.5rem] shadow-xl max-w-sm" }, [
                         React.createElement(AlertCircle, { className: "text-rose-500 mx-auto mb-4", size: 48 }),
-                        React.createElement('h2', { className: "text-xl font-bold mb-2" }, "Quase lá!"),
-                        React.createElement('p', { className: "text-stone-500" }, "Erro ao carregar a lista de presentes. Certifique-se de que seguiu os passos de configuração das Regras de Segurança no Firebase.")
+                        React.createElement('h2', { className: "text-xl font-bold mb-2" }, "Ops!"),
+                        React.createElement('p', { className: "text-stone-500" }, "Não foi possível carregar o site.")
                     ])
                 );
             }
@@ -184,19 +192,10 @@
             }
 
             return React.createElement('div', { className: "min-h-screen" }, [
-                // Header com novo Subtítulo
+                // Header
                 React.createElement('header', { key: 'header', className: "bg-white pt-24 pb-20 px-4 text-center shadow-sm relative overflow-hidden" }, [
                     React.createElement('div', { key: 'gradient', className: "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-200 via-rose-400 to-rose-200" }),
-                    React.createElement('div', { 
-                        key: 'icon-container', 
-                        className: "cursor-pointer select-none inline-block",
-                        onMouseDown: handlePressStart, 
-                        onMouseUp: handlePressEnd,
-                        onTouchStart: handlePressStart,
-                        onTouchEnd: handlePressEnd
-                    }, 
-                        React.createElement(Heart, { className: "w-14 h-14 text-rose-400 mx-auto mb-6 fill-rose-50" })
-                    ),
+                    React.createElement(Heart, { className: "w-14 h-14 text-rose-400 mx-auto mb-6 fill-rose-50" }),
                     React.createElement('h1', { key: 'title', className: "text-5xl md:text-7xl font-serif mb-4 tracking-tight text-stone-800" }, "Casa Nova Carlos e Gabi"),
                     React.createElement('p', { key: 'text', className: "text-stone-400 italic text-lg max-w-lg mx-auto leading-relaxed" }, "“Estamos a montar o nosso cantinho e a vossa ajuda torna tudo mais especial!”")
                 ]),
@@ -235,8 +234,44 @@
                     )
                 ),
 
-                // Painel Admin
-                showAdminPanel && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[200]" }, 
+                // Modal Login Admin
+                showLoginModal && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[200]" }, 
+                    React.createElement('div', { className: "bg-white rounded-[3rem] p-8 md:p-12 max-w-sm w-full relative shadow-2xl" }, [
+                        React.createElement('button', { 
+                            onClick: () => setShowLoginModal(false), 
+                            className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600" 
+                        }, React.createElement(X, { size: 24 })),
+                        
+                        React.createElement('div', { className: "text-center mb-8" }, [
+                            React.createElement(Lock, { className: "mx-auto text-rose-400 mb-4", size: 40 }),
+                            React.createElement('h3', { className: "text-2xl font-bold text-stone-800" }, "Acesso Restrito")
+                        ]),
+
+                        React.createElement('form', { onSubmit: handleLogin, className: "space-y-4" }, [
+                            React.createElement('input', { 
+                                placeholder: "Utilizador",
+                                value: loginData.username, 
+                                onChange: e => setLoginData({...loginData, username: e.target.value}),
+                                className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none"
+                            }),
+                            React.createElement('input', { 
+                                type: "password",
+                                placeholder: "Palavra-passe",
+                                value: loginData.password, 
+                                onChange: e => setLoginData({...loginData, password: e.target.value}),
+                                className: "w-full p-4 rounded-2xl bg-stone-50 border border-stone-100 outline-none"
+                            }),
+                            loginError && React.createElement('p', { className: "text-rose-500 text-xs text-center" }, loginError),
+                            React.createElement('button', { 
+                                type: "submit",
+                                className: "w-full py-4 bg-stone-800 text-white rounded-2xl font-bold hover:bg-stone-900 transition-all"
+                            }, "Entrar")
+                        ])
+                    ])
+                ),
+
+                // Painel de Gestão (Sendo visível só para Admin logado)
+                isAdmin && showAdminPanel && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[200]" }, 
                     React.createElement('div', { className: "bg-white rounded-[3rem] p-8 md:p-12 max-w-md w-full relative shadow-2xl" }, [
                         React.createElement('button', { 
                             onClick: () => setShowAdminPanel(false), 
@@ -330,9 +365,13 @@
                     ])
                 ),
 
-                // Footer
-                React.createElement('footer', { key: 'footer', className: "bg-white py-12 text-center text-stone-400 text-sm border-t border-stone-50" }, [
-                    React.createElement('p', null, "Com carinho, Carlos & Gabi")
+                // Footer & Botão Admin
+                React.createElement('footer', { key: 'footer', className: "bg-white py-12 text-center text-stone-400 text-sm border-t border-stone-50 relative" }, [
+                    React.createElement('p', { className: "mb-6" }, "Com carinho, Carlos & Gabi"),
+                    React.createElement('button', {
+                        onClick: () => isAdmin ? setShowAdminPanel(true) : setShowLoginModal(true),
+                        className: "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-stone-50 text-stone-300 hover:text-rose-400 hover:bg-stone-100 transition-all text-[10px] font-bold uppercase tracking-widest"
+                    }, isAdmin ? [React.createElement(Unlock, { size: 12 }), "Gerir Lista"] : [React.createElement(Lock, { size: 12 }), "Painel Admin"])
                 ])
             ]);
         }
@@ -343,18 +382,3 @@
     </script>
 </body>
 </html>
-```
-
-### O que fazer agora para o site funcionar:
-
-1.  **Atualize no GitHub:** Siga aquele passo a passo de editar o `index.html` direto no site do GitHub e colar este código novo. Isso vai forçar o Vercel a atualizar.
-2.  **Corrija o Firebase:** Vá à aba **Rules** do seu Firestore Database e cole este código exatamente assim para acabar com o erro de permissão:
-    ```javascript
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        match /{document=**} {
-          allow read, write: if true;
-        }
-      }
-    }
