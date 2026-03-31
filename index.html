@@ -17,7 +17,6 @@
 <body class="bg-[#faf7f2] text-stone-800 pb-32">
 
     <div id="root">
-        <!-- O React será montado aqui -->
         <div class="min-h-screen flex items-center justify-center">
             <div class="flex flex-col items-center gap-4">
                 <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-rose-500"></div>
@@ -26,7 +25,6 @@
         </div>
     </div>
 
-    <!-- Scripts do Firebase e React -->
     <script type="module">
         import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0';
         import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
@@ -49,12 +47,12 @@
 
         const idApp = 'cha-carlos-gabi-v3';
         
-        // Dados do PIX
-        const PIX_CHAVE = "07607079955"; 
-        const PIX_NOME = "CARLOS EDUARDO SOTOMAIOR ALBERTI";
-        const PIX_NOME_CURTO = "Carlos";
-        const PIX_CIDADE = "SAO PAULO";
-        const PIX_BANCO = "BANCO SANTANDER (BRASIL) S.A.";
+        // Dados do PIX ATUALIZADOS
+        const PIX_CHAVE = "11789243947"; // CPF limpo para o Payload do QR Code
+        const PIX_NOME = "GABRIELA LETICIA KASTCHUK DE DEUS";
+        const PIX_NOME_CURTO = "Gabi";
+        const PIX_CIDADE = "SAO PAULO"; 
+        const PIX_BANCO = "NU PAGAMENTOS S.A. (NUBANK)";
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -187,7 +185,6 @@
                     React.createElement('div', { key: 'bar', className: "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-200 via-rose-400 to-rose-200" }),
                     React.createElement(Heart, { className: "w-10 h-10 text-rose-400 mx-auto mb-4 fill-rose-50" }),
                     React.createElement('h1', { className: "text-5xl md:text-7xl font-serif mb-1 tracking-tight text-stone-800" }, "Carlos e Gabi"),
-                    // FRASE ATUALIZADA - MENOS CAFONA
                     React.createElement('p', { className: "text-stone-400 text-lg max-w-2xl mx-auto mb-2 tracking-wide uppercase text-sm font-medium" }, "Celebrando o nosso novo capítulo com quem mais amamos")
                 ]),
 
