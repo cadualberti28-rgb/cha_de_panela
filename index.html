@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chá de Panela - Carlos e Gabi</title>
+    <title>Chá de Panela - Cadu e Gabi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -35,7 +35,6 @@
             Heart, Gift, Copy, CheckCircle2, QrCode, X, Landmark, User, Loader2, Plus, Trash2, Lock, Unlock, Pencil 
         } from 'https://esm.sh/lucide-react@0.263.0';
 
-        // Configurações do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBAbGiEArsEz2EnzTxt-8vngYtWtr6qYyU",
             authDomain: "cha-de-panela-f4d73.firebaseapp.com",
@@ -46,11 +45,9 @@
         };
 
         const idApp = 'cha-carlos-gabi-v3';
-        
-        // Dados do PIX ATUALIZADOS
-        const PIX_CHAVE = "11789243947"; // CPF limpo para o Payload do QR Code
+        const PIX_CHAVE = "11789243947";
         const PIX_NOME = "GABRIELA LETICIA KASTCHUK DE DEUS";
-        const PIX_NOME_CURTO = "Gabi";
+        const PIX_NOME_CURTO = "Cadu";
         const PIX_CIDADE = "SAO PAULO"; 
         const PIX_BANCO = "NU PAGAMENTOS S.A. (NUBANK)";
 
@@ -65,14 +62,10 @@
             const [itemSelecionado, setItemSelecionado] = useState(null);
             const [itemEditando, setItemEditando] = useState(null);
             const [copiado, setCopiado] = useState(false);
-            
-            // Estado Admin
             const [eAdmin, setEAdmin] = useState(false);
             const [mostrarModalLogin, setMostrarModalLogin] = useState(false);
             const [dadosLogin, setDadosLogin] = useState({ usuario: '', senha: '' });
             const [erroLogin, setErroLogin] = useState('');
-            
-            // Estado do Formulário (Adicionar/Editar)
             const [formulario, setFormulario] = useState({ nome: '', preco: '', urlImagem: '' });
 
             const gerarPayloadPix = (valor) => {
@@ -100,10 +93,17 @@
 
             useEffect(() => {
                 const initAuth = async () => {
-                    await signInAnonymously(auth);
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        setCarregando(false);
+                    }
                 };
                 initAuth();
-                const desinscreverAuth = onAuthStateChanged(auth, setUsuario);
+                const desinscreverAuth = onAuthStateChanged(auth, (u) => {
+                    setUsuario(u);
+                    if (!u) setCarregando(false);
+                });
                 return () => desinscreverAuth();
             }, []);
 
@@ -114,15 +114,13 @@
                     const dados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     setItens(dados.sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0)));
                     setCarregando(false);
-                }, (error) => {
-                    console.error("Erro ao buscar dados:", error);
-                });
+                }, () => setCarregando(false));
                 return () => desinscrever();
             }, [usuario]);
 
             const realizarLogin = (e) => {
                 e.preventDefault();
-                if (dadosLogin.usuario === 'carlos_adm' && dadosLogin.senha === 'carlos_adm') {
+                if (dadosLogin.usuario === 'cadugabi' && dadosLogin.senha === 'cadugabi') {
                     setEAdmin(true);
                     setMostrarModalLogin(false);
                     setErroLogin('');
@@ -180,15 +178,13 @@
             if (carregando) return React.createElement('div', { className: "min-h-screen flex items-center justify-center bg-[#faf7f2]" }, React.createElement(Loader2, { className: "animate-spin text-rose-500 w-12 h-12" }));
 
             return React.createElement('div', { className: "min-h-screen" }, [
-                // Cabeçalho (Header)
                 React.createElement('header', { key: 'header', className: "bg-white pt-20 pb-16 px-4 text-center shadow-sm relative overflow-hidden" }, [
                     React.createElement('div', { key: 'bar', className: "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-200 via-rose-400 to-rose-200" }),
                     React.createElement(Heart, { className: "w-10 h-10 text-rose-400 mx-auto mb-4 fill-rose-50" }),
-                    React.createElement('h1', { className: "text-5xl md:text-7xl font-serif mb-1 tracking-tight text-stone-800" }, "Carlos e Gabi"),
+                    React.createElement('h1', { className: "text-5xl md:text-7xl font-serif mb-1 tracking-tight text-stone-800" }, "Cadu e Gabi"),
                     React.createElement('p', { className: "text-stone-400 text-lg max-w-2xl mx-auto mb-2 tracking-wide uppercase text-sm font-medium" }, "Celebrando o nosso novo capítulo com quem mais amamos")
                 ]),
 
-                // Painel do Administrador
                 eAdmin && React.createElement('section', { key: 'admin-panel', className: "max-w-4xl mx-auto px-6 mt-12" }, 
                     React.createElement('div', { className: `p-8 rounded-[2.5rem] shadow-xl border-2 ${itemEditando ? 'border-amber-200 bg-amber-50/20' : 'border-white bg-white'}` }, [
                         React.createElement('div', { className: "flex items-center gap-2 mb-6" }, [
@@ -218,7 +214,6 @@
                     ])
                 ),
 
-                // Lista de Presentes
                 React.createElement('main', { key: 'main', className: "max-w-7xl mx-auto px-6 py-16" }, 
                     React.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10" }, 
                         itens.map(item => React.createElement('div', { key: item.id, className: "presente-card bg-white rounded-[2.5rem] overflow-hidden shadow-md flex flex-col group border border-white relative" }, [
@@ -226,7 +221,6 @@
                                 React.createElement('button', { onClick: () => iniciarEdicao(item), className: "bg-white/90 p-2 rounded-full shadow-lg text-amber-500 hover:bg-amber-500 hover:text-white transition-all" }, React.createElement(Pencil, { size: 18 })),
                                 React.createElement('button', { onClick: () => deletarItem(item.id), className: "bg-white/90 p-2 rounded-full shadow-lg text-rose-500 hover:bg-rose-500 hover:text-white transition-all" }, React.createElement(Trash2, { size: 18 }))
                             ]),
-                            
                             React.createElement('div', { className: "h-72 overflow-hidden" }, 
                                 React.createElement('img', { src: item.imageUrl, className: "h-full w-full object-cover transition-transform duration-700 group-hover:scale-110", alt: item.name })
                             ),
@@ -244,8 +238,7 @@
                     )
                 ),
 
-                // Modal Login
-                mostrarModalLogin && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[200]" }, 
+                mostrarModalLogin && React.createElement('div', { key: 'login-modal', className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[200]" }, 
                     React.createElement('div', { className: "bg-white rounded-[3rem] p-10 max-w-sm w-full relative shadow-2xl text-center" }, [
                         React.createElement('button', { onClick: () => setMostrarModalLogin(false), className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600" }, React.createElement(X)),
                         React.createElement(Lock, { className: "mx-auto text-rose-400 mb-4", size: 40 }),
@@ -259,13 +252,11 @@
                     ])
                 ),
 
-                // Modal Pagamento (PIX)
-                itemSelecionado && React.createElement('div', { className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[100]" }, 
+                itemSelecionado && React.createElement('div', { key: 'pix-modal', className: "fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[100]" }, 
                     React.createElement('div', { className: "bg-white rounded-[3.5rem] p-8 md:p-14 max-w-md w-full relative text-center shadow-2xl" }, [
                         React.createElement('button', { onClick: () => setItemSelecionado(null), className: "absolute top-8 right-8 text-stone-300 hover:text-stone-600" }, React.createElement(X, { size: 32 })),
                         React.createElement('h3', { className: "text-2xl font-serif font-bold mb-1" }, itemSelecionado.name),
                         React.createElement('p', { className: "text-rose-500 font-black text-2xl mb-8" }, `R$ ${itemSelecionado.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
-                        
                         React.createElement('div', { className: "bg-stone-50 p-6 rounded-[2.5rem] border border-stone-100 mb-8" }, [
                             React.createElement('div', { className: "bg-white p-4 inline-block rounded-[2rem] mb-6 shadow-sm border border-stone-100" }, 
                                 React.createElement('img', { 
@@ -297,9 +288,8 @@
                     ])
                 ),
 
-                // Rodapé (Footer)
                 React.createElement('footer', { key: 'footer', className: "bg-white py-12 text-center text-stone-400 text-sm border-t border-stone-50 relative" }, [
-                    React.createElement('p', { className: "mb-6" }, "Carlos & Gabi"),
+                    React.createElement('p', { className: "mb-6" }, "Cadu & Gabi"),
                     React.createElement('button', { 
                         onClick: () => eAdmin ? setEAdmin(false) : setMostrarModalLogin(true),
                         className: "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-stone-50 text-stone-300 hover:text-rose-400 transition-all text-[10px] font-bold uppercase"
